@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <title>Генератор Краснопис: Модел и Повторение</title>
+    <style>
+        @font-face {
+            font-family: 'BoyanMaga';
+            src: url('Boyan_Maga-Regular.ttf') format('truetype');
+            font-weight: normal; font-style: normal;
+        }
+
+        body { background: #f0f2f5; margin: 0; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        
+        #toolbar {
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 0 auto 20px auto; width: 850px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* Контролер за прецизно позициониране */
+        .align-control {
+            display: flex; align-items: center; gap: 10px; 
+            background: #f0f8ff; padding: 8px 15px; 
+            border-radius: 8px; border: 1px solid #4facfe;
+        }
+        .align-control label { font-size: 0.95rem; color: #1a237e; font-weight: bold; }
+
+        /* Настройки за листа */
+        #paper {
+            width: 210mm; 
+            min-height: 297mm; 
+            background: white;
+            margin: 0 auto; 
+            padding: 15mm; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* ЗАГЛАВИЕ */
+        .worksheet-title {
+            text-align: center; font-size: 26px; color: #333;
+            margin: 0 0 20px 0; text-transform: uppercase;
+            letter-spacing: 2px; border-bottom: 2px dashed #e3f2fd;
+            padding-bottom: 15px;
+        }
+
+        header { 
+            margin-bottom: 25px; font-size: 15px; color: #333; 
+            display: flex; gap: 40px; border-bottom: 2px solid #f0f0f0; 
+            padding-bottom: 10px; 
+        }
+        
+        #rows-main-container { flex-grow: 1; }
+
+        .row-container { 
+            display: flex; align-items: center; height: 50px; margin-bottom: 8px; 
+        }
+
+        .teacher-input {
+            width: 140px; height: 35px; margin-right: 15px;
+            border: 2px solid #dcdfe6; border-radius: 6px;
+            padding: 0 8px; font-size: 16px; font-family: Arial, sans-serif;
+            background: #fdfdfd; outline: none; transition: 0.2s;
+        }
+        .teacher-input:focus { border-color: #4facfe; }
+
+        /* Зона за писане */
+        .writing-zone {
+            flex-grow: 1; height: 50px; position: relative;
+        }
+
+        /* ЛИНИАТУРА - ЯСНО ОБОСОБЕН ТЕСЕН РЕД */
+        .g-line { position: absolute; left: 0; right: 0; z-index: 1; }
+        .line-top { top: 0; border-top: 1px solid #e3f2fd; } /* Блед широк ред */
+        .line-mid-top { top: 15px; border-top: 2px solid #4facfe; } /* Плътен тесен ред - ГОРЕ */
+        .line-mid-bottom { top: 35px; border-top: 2px solid #4facfe; } /* Плътен тесен ред - ДОЛУ */
+        .line-bottom { top: 50px; border-top: 1px solid #e3f2fd; } /* Блед широк ред */
+
+        .cursive-output {
+            position: absolute; 
+            top: 5px; /* Начална позиция, контролира се от плъзгача */
+            left: 10px;
+            font-family: 'BoyanMaga', cursive; 
+            font-size: 32px; 
+            line-height: 1;
+            white-space: nowrap; 
+            color: #1a237e;
+            z-index: 2;
+        }
+
+        .student-trace { color: #b0bec5; margin-left: 20px; opacity: 0.8; }
+
+        /* САМООЦЕНКА */
+        .evaluation-footer { 
+            margin-top: auto; text-align: center; padding-top: 20px; 
+        }
+        .eval-text {
+            font-size: 14px; color: #555; font-style: italic; margin-bottom: 5px;
+        }
+        .stars {
+            font-size: 32px; color: #bdc3c7; letter-spacing: 5px;
+        }
+
+        /* ПРАВИЛА ЗА ПЕЧАТ */
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { 
+                background: white; margin: 0; padding: 0; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            /* Скриваме инструментите при печат */
+            #toolbar, .teacher-input { display: none !important; }
+            
+            #paper { 
+                box-shadow: none; margin: 0; border: none; 
+                padding: 15mm; width: 210mm; height: 297mm; 
+                page-break-after: avoid;
+            }
+            .cursive-output { left: 0; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar">
+        <span style="font-weight: bold; color: #4facfe; font-size: 1.1rem;">📝 РАБОТЕН ЛИСТ</span>
+        
+        <div class="align-control">
+            <label>↕️ Нагласи буквите в реда:</label>
+            <input type="range" min="-15" max="25" value="5" id="v-slider" oninput="adjustVertical(this.value)">
+        </div>
+
+        <button style="padding: 10px 25px; background: #4facfe; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1.1rem;" onclick="window.print()">🖨️ ПЕЧАТ</button>
+    </div>
+
+    <div id="paper">
+        <h1 class="worksheet-title">Работен лист</h1>
+        
+        <header>
+            <span style="flex:1;">✍️ <b>Ученик:</b> ____________________________________</span>
+            <span>📅 <b>Дата:</b> ______________</span>
+        </header>
+
+        <div id="rows-main-container"></div>
+
+        <footer class="evaluation-footer">
+            <div class="eval-text">Оцени се сам, като оцветиш звездичките:</div>
+            <div class="stars">☆☆☆☆☆☆</div>
+        </footer>
+    </div>
+
+    <script>
+        const container = document.getElementById('rows-main-container');
+        const totalRows = 14; 
+        
+        // Създаване на редовете
+        for (let i = 0; i < totalRows; i++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row-container';
+            rowDiv.innerHTML = `
+                <input type="text" class="teacher-input" placeholder="Напиши модел..." oninput="syncText(this, ${i})">
+                <div class="writing-zone">
+                    <div class="g-line line-top"></div>
+                    <div class="g-line line-mid-top"></div>
+                    <div class="g-line line-mid-bottom"></div>
+                    <div class="g-line line-bottom"></div>
+                    
+                    <div id="out-${i}" class="cursive-output"></div>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        // Функция за генериране на текста
+        function syncText(input, id) {
+            const output = document.getElementById(`out-${id}`);
+            const text = input.value;
+            if (text.trim() === "") {
+                output.innerHTML = "";
+                return;
+            }
+            const traceText = (text + " ").repeat(4);
+            output.innerHTML = `<span>${text}</span> <span class="student-trace">${traceText}</span>`;
+            
+            // Прилагаме текущата настройка от слайдера към новия текст
+            const currentOffset = document.getElementById('v-slider').value;
+            output.style.top = currentOffset + 'px';
+        }
+
+        // НОВО: Функция за местене на буквите нагоре-надолу
+        function adjustVertical(val) {
+            const outputs = document.querySelectorAll('.cursive-output');
+            outputs.forEach(output => {
+                output.style.top = val + 'px';
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Краснопис - Препис на текст | Дочка Кючукова</title>
+    <style>
+        @font-face {
+            font-family: 'Boyan Maga';
+            src: url('Boyan_Maga-Regular.ttf') format('truetype');
+        }
+
+        :root {
+            --primary-blue: #0a192f;
+            --accent-orange: #e65100;
+            --line-faint: #e3f2fd; 
+            --line-solid: #4facfe; 
+            --pen-blue: #0047AB;   
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #e9ecef;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 320px; background: white; height: 100vh;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1); padding: 25px;
+            box-sizing: border-box; overflow-y: auto; position: fixed;
+            z-index: 100;
+        }
+
+        .sidebar h2 { color: var(--primary-blue); font-size: 1.4rem; margin-top: 0; text-transform: uppercase;}
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9rem; }
+        
+        textarea, input[type="text"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: inherit;
+        }
+
+        textarea { resize: vertical; min-height: 120px; line-height: 1.4; }
+
+        .align-control {
+            background: #f0f8ff; padding: 15px; border-radius: 8px; border: 1px solid var(--line-solid); margin-bottom: 20px;
+        }
+        .align-control label { font-size: 0.9rem; color: var(--primary-blue); margin-bottom: 5px; display: block;}
+        .align-control input[type="range"] { width: 100%; cursor: pointer; margin-bottom: 15px; }
+        .align-control input[type="range"]:last-child { margin-bottom: 0; }
+
+        .btn-generate, .btn-print {
+            width: 100%; padding: 12px; color: white; border: none;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+            font-size: 16px; margin-top: 5px; transition: background 0.3s;
+        }
+        .btn-generate { background-color: var(--accent-orange); }
+        .btn-generate:hover { background-color: #cc4800; }
+        .btn-print { background-color: var(--primary-blue); }
+        .btn-print:hover { background-color: #112240; }
+
+        .workspace { margin-left: 320px; padding: 40px; flex-grow: 1; display: flex; justify-content: center; }
+        
+        .a4-sheet {
+            width: 210mm; height: 297mm; background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 15mm;
+            box-sizing: border-box; display: flex; flex-direction: column; position: relative;
+            overflow: hidden;
+        }
+
+        .sheet-header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .school-info { font-size: 14px; color: #333; }
+        .student-info { font-size: 14px; display: flex; align-items: center; }
+        .sheet-title { text-align: center; color: var(--primary-blue); margin-bottom: 20px; text-transform: uppercase; font-size: 20px;}
+
+        /* ПЕРФЕКТНАТА МАТРИЦА С 12 РЕДА */
+        .writing-zone {
+            position: relative;
+            height: 50px;
+            margin-bottom: 12px; 
+            width: 100%;
+        }
+
+        .g-line { position: absolute; left: 0; right: 0; z-index: 1; }
+        .line-top { top: 0; border-top: 1px solid var(--line-faint); }
+        .line-mid-top { top: 15px; border-top: 2px solid var(--line-solid); }
+        .line-mid-bottom { top: 35px; border-top: 2px solid var(--line-solid); }
+        .line-bottom { top: 50px; border-top: 1px solid var(--line-faint); }
+
+        .cursive-output {
+            position: absolute;
+            left: 10px;
+            font-family: 'Boyan Maga', cursive;
+            z-index: 10;
+            display: flex;
+            gap: 10px; /* По-малко разстояние между думите в изречение */
+            width: 100%;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .trace { color: #b0bec5; opacity: 0.8;} /* Целият текст е пунктир */
+
+        .evaluation-footer { 
+            margin-top: auto; text-align: center; padding-top: 10px; border-top: 1px dashed #eee;
+        }
+        .eval-text { font-size: 14px; color: #555; font-style: italic; margin-bottom: 5px; }
+        .stars { font-size: 32px; color: #bdc3c7; letter-spacing: 5px; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .sidebar { display: none !important; }
+            .workspace { margin: 0; padding: 0; }
+            .a4-sheet { box-shadow: none; width: 210mm; height: 297mm; margin: 0; padding: 15mm; page-break-after: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Краснопис (Текст)</h2>
+        
+        <div class="control-group">
+            <label>Въведи текст (до 12 реда):</label>
+            <textarea id="textInput" placeholder="Въведете текст...">Родна реч, омайна, сладка,
+що звучи навред край мен;
+реч на мама и на татка,
+реч, що мълвя всеки ден.</textarea>
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">Натисни "Enter" за преминаване на нов ред в тетрадката.</div>
+        </div>
+
+        <div class="align-control">
+            <label>📏 Размер на буквите:</label>
+            <input type="range" min="30" max="80" value="48" id="size-slider" oninput="adjustSize(this.value)">
+            
+            <label>↕️ Нагласи нагоре/надолу:</label>
+            <input type="range" min="-15" max="25" value="3" id="v-slider" oninput="adjustVertical(this.value)">
+        </div>
+
+        <div class="control-group">
+            <label>Име на учителя:</label>
+            <input type="text" id="teacherName" placeholder="Въведете име..." value="">
+        </div>
+        <div class="control-group">
+            <label>Училище:</label>
+            <input type="text" id="schoolName" placeholder="Въведете училище..." value="">
+        </div>
+
+        <button class="btn-generate" onclick="generateSheet()">🔄 Генерирай лист</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Отпечатай</button>
+    </div>
+
+    <div class="workspace">
+        <div class="a4-sheet" id="printArea">
+            <div class="sheet-header">
+                <div class="school-info">
+                    <strong id="displaySchool">_________________</strong><br>
+                    Учител: <span id="displayTeacher">_________________</span>
+                </div>
+                <div class="student-info">
+                    ✍️ Ученик: _______________________
+                </div>
+            </div>
+
+            <h2 class="sheet-title">УПРАЖНЕНИЕ ПО КРАСНОПИС</h2>
+
+            <div id="writingLinesContainer">
+                </div>
+
+            <footer class="evaluation-footer">
+                <div class="eval-text">Оцени се сам, като оцветиш звездичките:</div>
+                <div class="stars">☆☆☆☆☆☆</div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        function createRow(contentHTML) {
+            return `
+                <div class="writing-zone">
+                    <div class="g-line line-top"></div>
+                    <div class="g-line line-mid-top"></div>
+                    <div class="g-line line-mid-bottom"></div>
+                    <div class="g-line line-bottom"></div>
+                    <div class="cursive-output">${contentHTML}</div>
+                </div>
+            `;
+        }
+
+        function generateSheet() {
+            // Вземаме данните за учителя и училището
+            let tName = document.getElementById('teacherName').value;
+            let sName = document.getElementById('schoolName').value;
+            
+            // Ако полетата са празни, слагаме долни черти
+            document.getElementById('displayTeacher').textContent = tName !== "" ? tName : "_________________";
+            document.getElementById('displaySchool').textContent = sName !== "" ? sName : "_________________";
+
+            // Вземаме текста и го разделяме по редове (Enter)
+            let rawText = document.getElementById('textInput').value;
+            let lines = rawText.split('\n');
+
+            let container = document.getElementById('writingLinesContainer');
+            let html = "";
+            
+            // Генерираме 12 реда
+            for(let i = 0; i < 12; i++) {
+                let currentLine = lines[i] || ""; // Ако няма въведен текст за този ред, остава празен
+                
+                // Всичко е с клас "trace" за повтаряне
+                let rowContent = `<span class="trace">${currentLine}</span>`;
+                html += createRow(rowContent);
+            }
+
+            container.innerHTML = html;
+            
+            adjustSize(document.getElementById('size-slider').value);
+            adjustVertical(document.getElementById('v-slider').value);
+        }
+
+        function adjustSize(val) {
+            const outputs = document.querySelectorAll('.cursive-output');
+            outputs.forEach(output => { output.style.fontSize = val + 'px'; });
+        }
+
+        function adjustVertical(val) {
+            const outputs = document.querySelectorAll('.cursive-output');
+            outputs.forEach(output => { output.style.top = val + 'px'; });
+        }
+
+        window.onload = generateSheet;
+    </script>
+</body>
+</html>

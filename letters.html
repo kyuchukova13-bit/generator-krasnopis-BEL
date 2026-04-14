@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор на букви | Дочка Кючукова</title>
+    <style>
+        /* Зареждаме ръкописния шрифт */
+        @font-face {
+            font-family: 'Boyan Maga';
+            src: url('Boyan_Maga-Regular.ttf') format('truetype');
+        }
+
+        :root {
+            --primary-blue: #0a192f;
+            --accent-orange: #e65100;
+            --line-faint: #e3f2fd; /* Бледо синьо за широките редове */
+            --line-solid: #4facfe; /* Плътно синьо за тесния ред */
+            --pen-blue: #0047AB;   /* Химикалено синьо за буквите */
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #e9ecef;
+            display: flex;
+        }
+
+        /* Ляво меню */
+        .sidebar {
+            width: 320px; background: white; height: 100vh;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1); padding: 25px;
+            box-sizing: border-box; overflow-y: auto; position: fixed;
+            z-index: 100;
+        }
+
+        .sidebar h2 { color: var(--primary-blue); font-size: 1.4rem; margin-top: 0; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9rem; }
+        
+        select, input[type="text"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 14px; box-sizing: border-box;
+        }
+
+        /* Контролери за прецизно позициониране */
+        .align-control {
+            background: #f0f8ff; padding: 15px; border-radius: 8px; border: 1px solid var(--line-solid); margin-bottom: 20px;
+        }
+        .align-control label { font-size: 0.9rem; color: var(--primary-blue); margin-bottom: 5px; display: block;}
+        .align-control input[type="range"] { width: 100%; cursor: pointer; margin-bottom: 15px; }
+        .align-control input[type="range"]:last-child { margin-bottom: 0; }
+
+        .btn-generate, .btn-print {
+            width: 100%; padding: 12px; color: white; border: none;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+            font-size: 16px; margin-top: 10px; transition: background 0.3s;
+        }
+        .btn-generate { background-color: var(--accent-orange); }
+        .btn-generate:hover { background-color: #cc4800; }
+        .btn-print { background-color: var(--primary-blue); }
+        .btn-print:hover { background-color: #112240; }
+
+        /* Работна площ */
+        .workspace { margin-left: 320px; padding: 40px; flex-grow: 1; display: flex; justify-content: center; }
+        
+        .a4-sheet {
+            width: 210mm; height: 297mm; background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 15mm;
+            box-sizing: border-box; display: flex; flex-direction: column; position: relative;
+        }
+
+        /* Хедър */
+        .sheet-header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .school-info { font-size: 14px; color: #333; }
+        .student-info { font-size: 14px; display: flex; align-items: center; }
+        .sheet-title { text-align: center; color: var(--primary-blue); margin-bottom: 20px; text-transform: uppercase; font-size: 20px;}
+
+        /* СТРУКТУРА НА РЕДОВЕТЕ - 12 БРОЯ */
+        .writing-zone {
+            position: relative;
+            height: 50px;
+            margin-bottom: 12px; /* Намалено на 12px, за да съберем 12 реда! */
+            width: 100%;
+        }
+
+        .g-line { position: absolute; left: 0; right: 0; z-index: 1; }
+        .line-top { top: 0; border-top: 1px solid var(--line-faint); }
+        .line-mid-top { top: 15px; border-top: 2px solid var(--line-solid); }
+        .line-mid-bottom { top: 35px; border-top: 2px solid var(--line-solid); }
+        .line-bottom { top: 50px; border-top: 1px solid var(--line-faint); }
+
+        /* Текст */
+        .cursive-output {
+            position: absolute;
+            left: 10px;
+            font-family: 'Boyan Maga', cursive;
+            z-index: 10;
+            display: flex;
+            gap: 25px;
+            width: 100%;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .solid { color: var(--pen-blue); } /* Химикален цвят */
+        .trace { color: #b0bec5; opacity: 0.7;}
+
+        /* САМООЦЕНКА */
+        .evaluation-footer { 
+            margin-top: auto; text-align: center; padding-top: 10px; border-top: 1px dashed #eee;
+        }
+        .eval-text {
+            font-size: 14px; color: #555; font-style: italic; margin-bottom: 5px;
+        }
+        .stars {
+            font-size: 32px; color: #bdc3c7; letter-spacing: 5px;
+        }
+
+        /* ПРАВИЛА ЗА ПЕЧАТ (ФИКСИРАТ 1 СТРАНИЦА) */
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .sidebar { display: none !important; }
+            .workspace { margin: 0; padding: 0; }
+            .a4-sheet { 
+                box-shadow: none; width: 210mm; height: 297mm; 
+                margin: 0; padding: 15mm; page-break-after: avoid; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Писане на букви</h2>
+        
+        <div class="control-group">
+            <label>Избери буква:</label>
+            <select id="letterSelect" onchange="generateSheet()">
+            </select>
+        </div>
+
+        <div class="align-control">
+            <label>📏 Размер на буквите:</label>
+            <input type="range" min="30" max="80" value="48" id="size-slider" oninput="adjustSize(this.value)">
+            
+            <label>↕️ Нагласи нагоре/надолу:</label>
+            <input type="range" min="-15" max="25" value="3" id="v-slider" oninput="adjustVertical(this.value)">
+        </div>
+
+        <div class="control-group">
+           <input type="text" id="teacherName" placeholder="Име и фамилия" value="">
+
+        </div>
+        <div class="control-group">
+            <label>Училище:</label>
+           <input type="text" id="schoolName" placeholder="Име на училището" value="">
+        </div>
+
+        <button class="btn-generate" onclick="generateSheet()">🔄 Генерирай лист</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Отпечатай</button>
+    </div>
+
+    <div class="workspace">
+        <div class="a4-sheet" id="printArea">
+            <div class="sheet-header">
+                <div class="school-info">
+                    <strong id="displaySchool">НУ "Христо Ботев"</strong><br>
+                    Учител: <span id="displayTeacher">Дочка Кючукова</span>
+                </div>
+                <div class="student-info">
+                    ✍️ Ученик: _______________________
+                </div>
+            </div>
+
+            <h2 class="sheet-title">ДА СЕ НАУЧИМ ДА ПИШЕМ БУКВА <span id="titleLetter">А</span></h2>
+
+            <div id="writingLinesContainer">
+                </div>
+
+            <footer class="evaluation-footer">
+                <div class="eval-text">Оцени се сам, като оцветиш звездичките:</div>
+                <div class="stars">☆☆☆☆☆☆</div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const alphabet = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ь', 'Ю', 'Я'];
+        
+        const select = document.getElementById('letterSelect');
+        alphabet.forEach(letter => {
+            let option = document.createElement('option');
+            option.value = letter;
+            option.textContent = letter;
+            select.appendChild(option);
+        });
+
+        function createRow(contentHTML) {
+            return `
+                <div class="writing-zone">
+                    <div class="g-line line-top"></div>
+                    <div class="g-line line-mid-top"></div>
+                    <div class="g-line line-mid-bottom"></div>
+                    <div class="g-line line-bottom"></div>
+                    <div class="cursive-output">${contentHTML}</div>
+                </div>
+            `;
+        }
+
+        function generateSheet() {
+            document.getElementById('displayTeacher').textContent = document.getElementById('teacherName').value;
+            document.getElementById('displaySchool').textContent = document.getElementById('schoolName').value;
+            
+            const upper = document.getElementById('letterSelect').value;
+            const lower = upper.toLowerCase();
+            document.getElementById('titleLetter').textContent = upper;
+
+            let container = document.getElementById('writingLinesContainer');
+            
+            let html = "";
+            
+            // БЛОК 1: 4 реда ГЛАВНА буква (пунктирите намаляват с всеки ред)
+            let row1 = `<span class="solid">${upper}</span><span class="solid">${upper}</span>` + `<span class="trace">${upper}</span>`.repeat(4);
+            let row2 = `<span class="solid">${upper}</span>` + `<span class="trace">${upper}</span>`.repeat(3);
+            let row3 = `<span class="solid">${upper}</span>` + `<span class="trace">${upper}</span>`.repeat(2);
+            let row4 = `<span class="solid">${upper}</span>` + `<span class="trace">${upper}</span>`.repeat(1);
+            
+            // БЛОК 2: 4 реда МАЛКА буква
+            let row5 = `<span class="solid">${lower}</span><span class="solid">${lower}</span>` + `<span class="trace">${lower}</span>`.repeat(5);
+            let row6 = `<span class="solid">${lower}</span>` + `<span class="trace">${lower}</span>`.repeat(4);
+            let row7 = `<span class="solid">${lower}</span>` + `<span class="trace">${lower}</span>`.repeat(3);
+            let row8 = `<span class="solid">${lower}</span>` + `<span class="trace">${lower}</span>`.repeat(2);
+
+            // БЛОК 3: 4 реда СВЪРЗАНИ (голяма и малка)
+            let row9 = `<span class="solid">${upper}${lower}</span><span class="solid">${upper}${lower}</span>` + `<span class="trace">${upper}${lower}</span>`.repeat(3);
+            let row10 = `<span class="solid">${upper}${lower}</span>` + `<span class="trace">${upper}${lower}</span>`.repeat(2);
+            let row11 = `<span class="solid">${upper}${lower}</span>` + `<span class="trace">${upper}${lower}</span>`.repeat(1);
+            let row12 = `<span class="solid">${upper}${lower}</span>` + `<span class="trace">${upper}${lower}</span>`.repeat(1);
+
+            html += createRow(row1) + createRow(row2) + createRow(row3) + createRow(row4) + 
+                    createRow(row5) + createRow(row6) + createRow(row7) + createRow(row8) + 
+                    createRow(row9) + createRow(row10) + createRow(row11) + createRow(row12);
+                    
+            container.innerHTML = html;
+            
+            // Прилагаме стойностите от плъзгачите
+            adjustSize(document.getElementById('size-slider').value);
+            adjustVertical(document.getElementById('v-slider').value);
+        }
+
+        function adjustSize(val) {
+            const outputs = document.querySelectorAll('.cursive-output');
+            outputs.forEach(output => {
+                output.style.fontSize = val + 'px';
+            });
+        }
+
+        function adjustVertical(val) {
+            const outputs = document.querySelectorAll('.cursive-output');
+            outputs.forEach(output => {
+                output.style.top = val + 'px';
+            });
+        }
+
+        window.onload = generateSheet;
+    </script>
+</body>
+</html>
